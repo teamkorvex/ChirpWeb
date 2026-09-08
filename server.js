@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.SERVER_PORT || process.env.PORT || 9034;
 
 app.use(express.json());
 app.use(cookieParser());
@@ -30,10 +30,12 @@ app.get('/api/config', (req, res) => {
     });
 });
 
-// Static website
-app.use(express.static(path.join(__dirname, 'public')));
+// Static website with extensions disabled
+app.use(express.static(path.join(__dirname, 'public'), {
+    extensions: ['html', 'htm']
+}));
 
-// Explicit fallback
+// Explicit root fallback
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
