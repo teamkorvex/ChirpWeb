@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chirp - Register</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        
+        body {
+            background-color: #050505;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card {
+            background: rgba(18, 18, 18, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 40px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            z-index: 1;
+            position: relative;
+        }
+
+        .tab-switcher {
+            display: flex;
+            background: #121212;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            color: #888888;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .tab.active {
+            background: #ffffff;
+            color: #000000;
+            font-weight: 600;
+        }
+
+        h1 { font-size: 22px; margin-bottom: 6px; color: #ffffff; font-weight: 600; letter-spacing: -0.3px; }
+        p { color: #888888; font-size: 13px; margin-bottom: 20px; }
+
+        .input-group { margin-bottom: 16px; }
+        label { display: block; font-size: 11px; font-weight: 600; color: #aaaaaa; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            background: #141414;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            border-color: rgba(255, 255, 255, 0.3);
+            background: #1a1a1a;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
+        }
+
+        .file-upload-box {
+            width: 100%;
+            height: 100px;
+            background: #141414;
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .file-upload-box:hover { border-color: rgba(255, 255, 255, 0.4); }
+        .file-upload-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+        .file-upload-box span { font-size: 13px; color: #888888; z-index: 1; }
+
+        button.submit-btn {
+            width: 100%;
+            padding: 12px;
+            background: #ffffff;
+            color: #000000;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: background 0.2s;
+        }
+
+        button.submit-btn:hover { background: #e0e0e0; }
+        button.submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .error {
+            color: #f28b82;
+            background: rgba(242, 139, 130, 0.08);
+            border: 1px solid rgba(242, 139, 130, 0.2);
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .step { display: none; }
+        .step.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div id="auth-tabs" class="tab-switcher">
+            <div id="tab-register" class="tab active" onclick="switchMode('register')">Register</div>
+            <div id="tab-login" class="tab" onclick="switchMode('login')">Log In</div>
+        </div>
+
+        <h1 id="title">Create an account</h1>
+        <p id="subtitle">Connect with your friends privately.</p>
+        
+        <div id="error-msg" class="error"></div>
+
+        <!-- LOGIN FORM -->
+        <form id="login-form" class="step active" onsubmit="handleLogin(event)">
+            <div class="input-group">
+                <label>Email</label>
+                <input type="email" id="login-email" placeholder="name@example.com" required>
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="login-password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="submit-btn" id="login-btn">Log In</button>
+        </form>
+
+        <!-- REGISTER STEP 1: Email & Password -->
+        <form id="reg-step-1" class="step" onsubmit="handleRegStep1(event)">
+            <div class="input-group">
+                <label>Email</label>
+                <input type="email" id="reg-email" placeholder="name@example.com" required>
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="reg-password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="submit-btn">Continue</button>
+        </form>
+
+        <!-- REGISTER STEP 2: Username & PFP File Upload -->
+        <form id="reg-step-2" class="step" onsubmit="handleRegFinal(event)">
+            <div class="input-group">
+                <label>Username</label>
+                <input type="text" id="reg-username" placeholder="cooluser123" required>
+            </div>
+            <div class="input-group">
+                <label>Profile Picture</label>
+                <input type="file" id="reg-avatar-file" accept="image/*" style="display: none;" onchange="previewImage(event)">
+                <div class="file-upload-box" onclick="document.getElementById('reg-avatar-file').click()">
+                    <img id="avatar-preview" style="display: none;" alt="Avatar Preview">
+                    <span id="upload-label">Click to upload image</span>
+                </div>
+            </div>
+            <button type="submit" class="submit-btn" id="final-btn">Complete Account</button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5/dist/js.cookie.min.js"></script>
+    <script>
+        let supabaseClient = null;
+        let memoryEmail = '';
+        let memoryPassword = '';
+        let selectedFile = null;
+
+        const errorMsg = document.getElementById('error-msg');
+        const titleEl = document.getElementById('title');
+        const subtitleEl = document.getElementById('subtitle');
+        const authTabs = document.getElementById('auth-tabs');
+
+        async function init() {
+            try {
+                const res = await fetch('/api/config', { cache: 'no-store' });
+                const config = await res.json();
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+
+                if (Cookies.get('chirp_session')) {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (session) return window.location.replace('/chat.html');
+                    Cookies.remove('chirp_session', { path: '/' });
+                }
+            } catch (err) {
+                console.error('Init error:', err);
+            }
+        }
+        init();
+
+        function switchMode(mode) {
+            errorMsg.style.display = 'none';
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+
+            if (mode === 'login') {
+                document.getElementById('tab-register').classList.remove('active');
+                document.getElementById('tab-login').classList.add('active');
+                titleEl.innerText = 'Welcome back';
+                subtitleEl.innerText = 'Enter your credentials to access Chirp.';
+                document.getElementById('login-form').classList.add('active');
+            } else {
+                document.getElementById('tab-login').classList.remove('active');
+                document.getElementById('tab-register').classList.add('active');
+                titleEl.innerText = 'Create an account';
+                subtitleEl.innerText = 'Connect with your friends privately.';
+                document.getElementById('reg-step-1').classList.add('active');
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            errorMsg.style.display = 'none';
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const btn = document.getElementById('login-btn');
+                btn.disabled = true;
+                btn.innerText = 'Logging in...';
+
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                
+                if (data.session) {
+                    Cookies.set('chirp_session', data.session.access_token, { expires: 7, path: '/' });
+                    window.location.replace('/chat.html');
+                }
+            } catch (err) {
+                errorMsg.innerText = err.message || 'Login failed.';
+                errorMsg.style.display = 'block';
+                const btn = document.getElementById('login-btn');
+                btn.disabled = false;
+                btn.innerText = 'Log In';
+            }
+        }
+
+        function handleRegStep1(e) {
+            e.preventDefault();
+            errorMsg.style.display = 'none';
+
+            memoryEmail = document.getElementById('reg-email').value.trim();
+            memoryPassword = document.getElementById('reg-password').value;
+
+            if (!memoryEmail || !memoryPassword) {
+                errorMsg.innerText = 'Please fill out all fields.';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            authTabs.style.display = 'none';
+            titleEl.innerText = 'Set up your profile';
+            subtitleEl.innerText = 'Choose a username and profile picture.';
+
+            document.getElementById('reg-step-1').classList.remove('active');
+            document.getElementById('reg-step-2').classList.add('active');
+        }
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                selectedFile = file;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('avatar-preview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    document.getElementById('upload-label').style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function handleRegFinal(e) {
+            e.preventDefault();
+            errorMsg.style.display = 'none';
+
+            const username = document.getElementById('reg-username').value.trim();
+            if (!username) {
+                errorMsg.innerText = 'Username is required.';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            try {
+                const btn = document.getElementById('final-btn');
+                btn.disabled = true;
+                btn.innerText = 'Uploading picture...';
+
+                let avatar_url = null;
+
+                // 1. Upload file if selected
+                if (selectedFile) {
+                    const fileExt = selectedFile.name.split('.').pop();
+                    const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+                    const filePath = `${fileName}`;
+
+                    const { error: uploadError } = await supabaseClient.storage
+                        .from('avatars')
+                        .upload(filePath, selectedFile);
+
+                    if (uploadError) throw uploadError;
+
+                    // Get Public URL
+                    const { data: publicUrlData } = supabaseClient.storage
+                        .from('avatars')
+                        .getPublicUrl(filePath);
+
+                    avatar_url = publicUrlData.publicUrl;
+                }
+
+                btn.innerText = 'Creating account...';
+
+                // 2. Sign up user with collected details & avatar url metadata
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: memoryEmail,
+                    password: memoryPassword,
+                    options: {
+                        data: {
+                            username: username,
+                            avatar_url: avatar_url
+                        }
+                    }
+                });
+
+                if (error) throw error;
+
+                memoryEmail = '';
+                memoryPassword = '';
+                selectedFile = null;
+
+                if (data.session) {
+                    Cookies.set('chirp_session', data.session.access_token, { expires: 7, path: '/' });
+                    window.location.replace('/chat.html');
+                }
+            } catch (err) {
+                errorMsg.innerText = err.message || 'Registration failed.';
+                errorMsg.style.display = 'block';
+                const btn = document.getElementById('final-btn');
+                btn.disabled = false;
+                btn.innerText = 'Complete Account';
+            }
+        }
+    </script>
+</body>
+</html>

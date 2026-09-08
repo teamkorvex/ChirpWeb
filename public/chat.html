@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chirp - Chat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+
+        :root {
+            --bg-primary: #0f0f0f;
+            --bg-secondary: #1e1f20;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: #ededef;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            transition: background 0.3s ease;
+            font-weight: 400;
+        }
+
+        /* Leftmost Navigation Rail */
+        .server-sidebar {
+            width: 72px;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px 0;
+            gap: 12px;
+            border-right: 1px solid rgba(255, 255, 255, 0.04);
+            z-index: 60;
+            flex-shrink: 0;
+        }
+
+        .server-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #d4d4d8;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+
+        .server-icon:hover {
+            border-radius: 35%;
+            background: #a78bfa;
+            color: #0f0f0f;
+        }
+
+        .server-icon.add-server {
+            background: var(--bg-secondary);
+            color: #34d399;
+        }
+
+        .server-icon.add-server:hover {
+            background: #34d399;
+            color: #0f0f0f;
+            border-radius: 35%;
+        }
+
+        .server-divider {
+            width: 28px;
+            height: 2px;
+            background: var(--bg-secondary);
+            border-radius: 1px;
+            margin: 4px 0;
+        }
+
+        /* App Layout */
+        .app-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Workspace / DMs Sidebar */
+        .dm-sidebar {
+            width: 250px;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255, 255, 255, 0.04);
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .dm-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 10px;
+        }
+
+        .dm-category-header {
+            font-size: 11px;
+            font-weight: 500;
+            color: #6b6b70;
+            padding: 12px 8px 6px 8px;
+            letter-spacing: 0.3px;
+        }
+
+        .dm-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #a1a1aa;
+            font-size: 14px;
+            font-weight: 400;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            margin-bottom: 2px;
+        }
+        .dm-item-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+        }
+        .dm-item-left span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .dm-item:hover { background: var(--bg-secondary); color: #f4f4f5; }
+        .dm-item.active { background: var(--bg-secondary); color: #ffffff; }
+
+        .close-dm-btn {
+            background: transparent;
+            border: none;
+            color: #71717a;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: none;
+        }
+        .dm-item:hover .close-dm-btn { display: flex; }
+        .close-dm-btn:hover { color: #f87171; background: rgba(248, 113, 113, 0.1); }
+
+        /* User Panel & Dropup Menu */
+        .user-panel {
+            height: 56px;
+            background: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            position: relative;
+        }
+
+        .user-panel-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 4px;
+            width: 100%;
+            transition: background 0.15s ease;
+        }
+        .user-panel-left:hover { background: var(--bg-secondary); }
+
+        .user-panel-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #f4f4f5;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        /* Dropup Menu */
+        .dropup-menu {
+            position: absolute;
+            bottom: 66px;
+            left: 10px;
+            right: 10px;
+            background: var(--bg-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 4px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.8);
+            padding: 4px;
+            display: none;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        .dropup-menu.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .dropup-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 3px;
+            color: #a1a1aa;
+            font-size: 13px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .dropup-item:hover { background: rgba(255,255,255,0.05); color: #f4f4f5; }
+        .dropup-item.danger { color: #f87171; }
+        .dropup-item.danger:hover { background: rgba(248, 113, 113, 0.1); color: #f87171; }
+
+        /* Main Content View */
+        .main-content {
+            flex: 1;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .top-nav {
+            height: 52px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            background: var(--bg-primary);
+        }
+
+        .top-nav-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .top-nav-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #f4f4f5;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-right: 1px solid var(--bg-secondary);
+            padding-right: 16px;
+        }
+
+        .top-nav-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .nav-tab {
+            background: transparent;
+            border: none;
+            color: #a1a1aa;
+            font-size: 13px;
+            font-weight: 400;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .nav-tab:hover { background: var(--bg-secondary); color: #f4f4f5; }
+        .nav-tab.active { background: var(--bg-secondary); color: #ffffff; }
+        .nav-tab.add-friend-tab { background: #34d399; color: #0f0f0f; font-weight: 500; }
+        .nav-tab.add-friend-tab:hover { background: #10b981; }
+
+        .badge {
+            background: #f87171;
+            color: #0f0f0f;
+            font-size: 10px;
+            font-weight: 500;
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin-left: 6px;
+        }
+
+        .content-body {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        /* Friends view layout */
+        .friends-section-title {
+            font-size: 11px;
+            font-weight: 500;
+            color: #6b6b70;
+            letter-spacing: 0.3px;
+            margin-bottom: 12px;
+        }
+
+        .friend-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 4px;
+            margin-bottom: 6px;
+            transition: background 0.15s;
+        }
+        .friend-row:hover { background: #26272a; }
+
+        .friend-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .friend-details h4 { font-size: 13px; font-weight: 500; color: #f4f4f5; margin-bottom: 2px; }
+        .friend-details p { font-size: 11px; color: #71717a; }
+
+        .friend-actions { display: flex; gap: 6px; }
+
+        .action-btn {
+            background: var(--bg-primary);
+            border: none;
+            color: #f4f4f5;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .action-btn.accept { background: #34d399; color: #0f0f0f; }
+        .action-btn.accept:hover { background: #10b981; }
+        .action-btn.reject { background: var(--bg-primary); color: #f87171; }
+        .action-btn.reject:hover { background: rgba(248, 113, 113, 0.1); }
+
+        /* Modal Overlays */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.show { display: flex; }
+
+        .modal-card {
+            background: var(--bg-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 4px;
+            width: 100%;
+            max-width: 380px;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.9);
+        }
+
+        .modal-card h3 { font-size: 15px; font-weight: 500; margin-bottom: 6px; color: #f4f4f5; text-align: center; }
+        .modal-card p { font-size: 12px; color: #a1a1aa; margin-bottom: 20px; text-align: center; line-height: 1.4; }
+
+        .modal-card input {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-primary);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 4px;
+            color: #f4f4f5;
+            font-size: 13px;
+            outline: none;
+            margin-bottom: 14px;
+        }
+        .modal-card input:focus { border-color: #a78bfa; }
+
+        .modal-footer {
+            background: var(--bg-primary);
+            margin: -24px;
+            margin-top: 20px;
+            padding: 12px 20px;
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .modal-btn {
+            padding: 7px 14px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+        }
+        .modal-btn.secondary { background: transparent; color: #a1a1aa; }
+        .modal-btn.secondary:hover { color: #f4f4f5; background: var(--bg-secondary); }
+        .modal-btn.primary { background: #a78bfa; color: #0f0f0f; }
+        .modal-btn.primary:hover { background: #9061f9; }
+
+        .modal-msg { font-size: 12px; margin-bottom: 12px; text-align: center; display: none; }
+        .modal-msg.error { color: #f87171; }
+        .modal-msg.success { color: #34d399; }
+
+        /* Circular PFP styles */
+        .pfp-container {
+            position: relative;
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+        }
+
+        .pfp {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            object-fit: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            color: #f4f4f5;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            position: absolute;
+            bottom: -1px;
+            right: -1px;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            border: 2px solid var(--bg-primary);
+            background: #71717a;
+        }
+        .status-dot.online { background: #34d399; }
+        .status-dot.offline { background: #52525b; }
+    </style>
+</head>
+<body>
+
+    <div class="server-sidebar">
+        <div class="server-icon" onclick="switchTab('overview')" title="Direct Messages">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        </div>
+        <div class="server-divider"></div>
+        <div class="server-icon add-server" onclick="openServerModal()" title="Add a Workspace">+</div>
+    </div>
+
+    <div class="app-layout">
+        <div class="dm-sidebar">
+            <div class="dm-list">
+                <div class="dm-item" id="nav-overview" onclick="switchTab('overview')">
+                    <div class="dm-item-left">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        <span>Friends</span>
+                    </div>
+                </div>
+                <div style="margin-top: 6px;">
+                    <div class="dm-category-header">Direct Messages</div>
+                    <div id="dm-list-container"></div>
+                </div>
+            </div>
+
+            <div class="dropup-menu" id="dropup-menu">
+                <div class="dropup-item" onclick="window.location.href='/settings.html'">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <span>Settings</span>
+                </div>
+                <div class="dropup-item danger" onclick="handleLogout()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    <span>Log Out</span>
+                </div>
+            </div>
+
+            <div class="user-panel">
+                <div class="user-panel-left" onclick="toggleDropup(event)">
+                    <div class="pfp-container">
+                        <img id="panel-pfp" class="pfp" style="display: none;" alt="">
+                        <div id="panel-fallback-pfp" class="pfp">?</div>
+                        <div class="status-dot online"></div>
+                    </div>
+                    <span id="panel-username" class="user-panel-name">Loading...</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #52525b;"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="top-nav">
+                <div class="top-nav-left">
+                    <div class="top-nav-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                        <span id="top-nav-title-text">Friends</span>
+                    </div>
+                    <div class="top-nav-tabs" id="top-nav-tabs-container">
+                        <button class="nav-tab active" id="tab-online" onclick="switchFriendsTab('online')">Online</button>
+                        <button class="nav-tab" id="tab-all" onclick="switchFriendsTab('all')">All</button>
+                        <button class="nav-tab" id="tab-pending" onclick="switchFriendsTab('pending')">Pending <span id="pending-badge" class="badge" style="display:none;">0</span></button>
+                        <button class="nav-tab add-friend-tab" onclick="openAddFriendModal()">Add Friend</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-body" id="main-content-body"></div>
+        </div>
+    </div>
+
+    <div id="server-modal" class="modal-overlay" onclick="closeServerModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <h3>Workspace Creation</h3>
+            <p>Workspace creation is currently unavailable.</p>
+            <div class="modal-footer">
+                <button class="modal-btn primary" onclick="closeServerModal()">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-friend-modal" class="modal-overlay" onclick="closeAddFriendModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <h3>Add Connection</h3>
+            <p>Connect securely using a Chirp username.</p>
+            <div id="friend-modal-msg" class="modal-msg"></div>
+            <input type="text" id="target-username" placeholder="Enter username..." onkeydown="if(event.key==='Enter') sendFriendRequest()">
+            <div class="modal-footer">
+                <button class="modal-btn secondary" onclick="closeAddFriendModal()">Cancel</button>
+                <button class="modal-btn primary" onclick="sendFriendRequest()">Send Request</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5/dist/js.cookie.min.js"></script>
+    <script>
+        let supabaseClient;
+        let currentUser = null;
+        let currentView = 'overview';
+        let currentFriendsTab = 'online';
+        let cachedProfiles = {};
+        let cachedFriendships = [];
+
+        async function init() {
+            try {
+                if (!Cookies.get('chirp_session')) return window.location.replace('/');
+                const res = await fetch('/api/config');
+                const config = await res.json();
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+
+                const { data: { user }, error } = await supabaseClient.auth.getUser();
+                if (error || !user) {
+                    Cookies.remove('chirp_session', { path: '/' });
+                    return window.location.replace('/');
+                }
+                currentUser = user;
+
+                await updatePresence(true);
+                window.addEventListener('focus', () => updatePresence(true));
+                window.addEventListener('blur', () => updatePresence(false));
+
+                const { data: profile } = await supabaseClient.from('profiles').select('username, avatar_url').eq('id', user.id).single();
+                const panelPfp = document.getElementById('panel-pfp');
+                const panelFallback = document.getElementById('panel-fallback-pfp');
+                const usernameEl = document.getElementById('panel-username');
+
+                if (profile) {
+                    usernameEl.innerText = profile.username || 'User';
+                    if (profile.avatar_url && profile.avatar_url.trim() !== '') {
+                        panelPfp.src = profile.avatar_url; panelPfp.style.display = 'block'; panelFallback.style.display = 'none';
+                    } else {
+                        panelPfp.style.display = 'none'; panelFallback.style.display = 'flex';
+                        if (profile.username) panelFallback.innerText = profile.username.charAt(0).toUpperCase();
+                    }
+                } else if (user.email) {
+                    usernameEl.innerText = user.email.split('@')[0];
+                    panelPfp.style.display = 'none'; panelFallback.style.display = 'flex';
+                    panelFallback.innerText = user.email.charAt(0).toUpperCase();
+                }
+
+                await loadAppData();
+                renderView();
+                setInterval(() => updatePresence(true), 30000);
+
+                window.addEventListener('click', (e) => {
+                    const dropup = document.getElementById('dropup-menu');
+                    const panel = document.querySelector('.user-panel-left');
+                    if (!panel.contains(e.target) && !dropup.contains(e.target)) dropup.classList.remove('show');
+                });
+            } catch (err) { window.location.replace('/'); }
+        }
+        init();
+
+        function toggleDropup(e) { e.stopPropagation(); document.getElementById('dropup-menu').classList.toggle('show'); }
+
+        async function handleLogout() {
+            try {
+                await updatePresence(false);
+                await supabaseClient.auth.signOut();
+                Cookies.remove('chirp_session', { path: '/' });
+                window.location.replace('/');
+            } catch (e) { window.location.replace('/'); }
+        }
+
+        async function updatePresence(isOnline) {
+            if (!currentUser || !supabaseClient) return;
+            try {
+                await supabaseClient.from('profiles').update({ status: isOnline ? 'online' : 'offline', updated_at: new Date().toISOString() }).eq('id', currentUser.id);
+            } catch(e) {}
+        }
+
+        async function loadAppData() {
+            const { data: fs } = await supabaseClient.from('friendships').select('*').or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`);
+            cachedFriendships = fs || [];
+            let userIds = new Set();
+            cachedFriendships.forEach(f => { userIds.add(f.sender_id); userIds.add(f.receiver_id); });
+            if (userIds.size > 0) {
+                const { data: profs } = await supabaseClient.from('profiles').select('*').in('id', Array.from(userIds));
+                if (profs) profs.forEach(p => { cachedProfiles[p.id] = p; });
+            }
+            updatePendingBadge();
+        }
+
+        function updatePendingBadge() {
+            const count = cachedFriendships.filter(f => f.status === 'pending' && f.receiver_id === currentUser.id).length;
+            const badge = document.getElementById('pending-badge');
+            if (count > 0) { badge.innerText = count; badge.style.display = 'inline'; } else { badge.style.display = 'none'; }
+        }
+
+        function switchTab(viewName) { currentView = viewName; document.getElementById('dropup-menu').classList.remove('show'); renderView(); }
+        function switchFriendsTab(tabName) {
+            currentFriendsTab = tabName;
+            document.querySelectorAll('.top-nav-tabs .nav-tab').forEach(el => { if(!el.classList.contains('add-friend-tab')) el.classList.remove('active'); });
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            renderFriendsBody();
+        }
+
+        function renderView() {
+            document.getElementById('nav-overview').classList.remove('active');
+            document.querySelectorAll('.dm-item').forEach(el => { if(el.id !== 'nav-overview') el.classList.remove('active'); });
+
+            if (currentView === 'overview') {
+                document.getElementById('nav-overview').classList.add('active');
+                document.getElementById('top-nav-title-text').innerText = 'Friends';
+                document.getElementById('top-nav-tabs-container').style.display = 'flex';
+                renderFriendsBody();
+            } else if (currentView.startsWith('chat:')) {
+                const targetId = currentView.split(':')[1];
+                const activeDm = document.getElementById(`dm-item-${targetId}`);
+                if (activeDm) activeDm.classList.add('active');
+                const profile = cachedProfiles[targetId] || { username: 'User' };
+                document.getElementById('top-nav-title-text').innerText = profile.username;
+                document.getElementById('top-nav-tabs-container').style.display = 'none';
+                renderChatBody(targetId);
+            }
+            renderDmList();
+        }
+
+        function renderDmList() {
+            const container = document.getElementById('dm-list-container');
+            const accepted = cachedFriendships.filter(f => f.status === 'accepted');
+            if (accepted.length === 0) { container.innerHTML = `<div style="color: #6b6b70; font-size: 12px; padding: 6px 8px;">No direct messages yet</div>`; return; }
+            let html = '';
+            accepted.forEach(f => {
+                const friendId = f.sender_id === currentUser.id ? f.receiver_id : f.sender_id;
+                const profile = cachedProfiles[friendId] || { username: 'User', status: 'offline' };
+                const isOnline = profile.status === 'online';
+                const avatarHtml = profile.avatar_url ? `<img src="${profile.avatar_url}" class="pfp">` : `<div class="pfp">${profile.username.charAt(0).toUpperCase()}</div>`;
+                html += `
+                    <div class="dm-item ${currentView === 'chat:'+friendId ? 'active' : ''}" id="dm-item-${friendId}" onclick="switchTab('chat:${friendId}')">
+                        <div class="dm-item-left">
+                            <div class="pfp-container">${avatarHtml}<div class="status-dot ${isOnline ? 'online' : 'offline'}"></div></div>
+                            <span>${profile.username}</span>
+                        </div>
+                        <button class="close-dm-btn" onclick="event.stopPropagation(); closeDm('${friendId}')">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderFriendsBody() {
+            const body = document.getElementById('main-content-body');
+            if (currentFriendsTab === 'pending') {
+                const pendingList = cachedFriendships.filter(f => f.status === 'pending');
+                if (pendingList.length === 0) { body.innerHTML = `<div class="friends-section-title">Pending — 0</div><div style="color: #71717a; font-size: 13px;">No pending connection requests.</div>`; return; }
+                let html = `<div class="friends-section-title">Pending Requests — ${pendingList.length}</div>`;
+                pendingList.forEach(f => {
+                    const isIncoming = f.receiver_id === currentUser.id;
+                    const otherId = isIncoming ? f.sender_id : f.receiver_id;
+                    const profile = cachedProfiles[otherId] || { username: 'User' };
+                    const avatarHtml = profile.avatar_url ? `<img src="${profile.avatar_url}" class="pfp">` : `<div class="pfp">${profile.username.charAt(0).toUpperCase()}</div>`;
+                    html += `
+                        <div class="friend-row">
+                            <div class="friend-info">${avatarHtml}<div class="friend-details"><h4>${profile.username}</h4><p>${isIncoming ? 'Incoming Request' : 'Outgoing Request'}</p></div></div>
+                            <div class="friend-actions">
+                                ${isIncoming ? `<button class="action-btn accept" onclick="respondFriendRequest('${f.id}', 'accepted')">Accept</button><button class="action-btn reject" onclick="respondFriendRequest('${f.id}', 'rejected')">Ignore</button>` : `<button class="action-btn reject" onclick="respondFriendRequest('${f.id}', 'rejected')">Cancel</button>`}
+                            </div>
+                        </div>
+                    `;
+                });
+                body.innerHTML = html;
+                return;
+            }
+            const accepted = cachedFriendships.filter(f => f.status === 'accepted');
+            const friends = accepted.map(f => cachedProfiles[f.sender_id === currentUser.id ? f.receiver_id : f.sender_id]).filter(Boolean);
+            const filtered = currentFriendsTab === 'online' ? friends.filter(p => p.status === 'online') : friends;
+            if (filtered.length === 0) { body.innerHTML = `<div class="friends-section-title">${currentFriendsTab === 'online' ? 'Online Friends — 0' : 'All Friends — 0'}</div><div style="color: #71717a; font-size: 13px;">No connections found here.</div>`; return; }
+            let html = `<div class="friends-section-title">${currentFriendsTab === 'online' ? 'Online Connections' : 'All Connections'} — ${filtered.length}</div>`;
+            filtered.forEach(p => {
+                const isOnline = p.status === 'online';
+                const avatarHtml = p.avatar_url ? `<img src="${p.avatar_url}" class="pfp">` : `<div class="pfp">${p.username.charAt(0).toUpperCase()}</div>`;
+                html += `
+                    <div class="friend-row" style="cursor: pointer;" onclick="switchTab('chat:${p.id}')">
+                        <div class="friend-info">
+                            <div class="pfp-container">${avatarHtml}<div class="status-dot ${isOnline ? 'online' : 'offline'}"></div></div>
+                            <div class="friend-details"><h4>${p.username}</h4><p>${isOnline ? 'Online' : 'Offline'}</p></div>
+                        </div>
+                        <div class="friend-actions"><button class="action-btn accept" onclick="event.stopPropagation(); switchTab('chat:${p.id}')">Message</button></div>
+                    </div>
+                `;
+            });
+            body.innerHTML = html;
+        }
+
+        function renderChatBody(targetId) {
+            const profile = cachedProfiles[targetId] || { username: 'User' };
+            const body = document.getElementById('main-content-body');
+            body.innerHTML = `
+                <div style="display: flex; flex-direction: column; height: 100%; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.04);">
+                        <div class="pfp" style="width: 40px; height: 40px; font-size: 15px;">${profile.avatar_url ? `<img src="${profile.avatar_url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">` : profile.username.charAt(0).toUpperCase()}</div>
+                        <div>
+                            <h2 style="font-size: 16px; font-weight: 500; color: #f4f4f5;">${profile.username}</h2>
+                            <p style="font-size: 12px; color: #71717a;">This is the beginning of your direct message history with ${profile.username}.</p>
+                        </div>
+                    </div>
+                    <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: #52525b; font-size: 13px;">Messaging coming soon!</div>
+                </div>
+            `;
+        }
+
+        async function closeDm(friendId) {
+            const friendship = cachedFriendships.find(f => (f.sender_id === currentUser.id && f.receiver_id === friendId) || (f.receiver_id === currentUser.id && f.sender_id === friendId));
+            if (friendship) {
+                await supabaseClient.from('friendships').delete().eq('id', friendship.id);
+                cachedFriendships = cachedFriendships.filter(f => f.id !== friendship.id);
+                if (currentView === 'chat:' + friendId) switchTab('overview'); else renderDmList();
+            }
+        }
+
+        async function respondFriendRequest(friendshipId, status) {
+            if (status === 'rejected') await supabaseClient.from('friendships').delete().eq('id', friendshipId);
+            else await supabaseClient.from('friendships').update({ status: 'accepted' }).eq('id', friendshipId);
+            await loadAppData(); renderView();
+        }
+
+        function openServerModal() { document.getElementById('server-modal').classList.add('show'); }
+        function closeServerModal(e) { if (!e || e.target.id === 'server-modal' || e.target.classList.contains('modal-btn')) document.getElementById('server-modal').classList.remove('show'); }
+        function openAddFriendModal() { document.getElementById('target-username').value = ''; document.getElementById('friend-modal-msg').style.display = 'none'; document.getElementById('add-friend-modal').classList.add('show'); }
+        function closeAddFriendModal(e) { if (!e || e.target.id === 'add-friend-modal' || e.target.classList.contains('secondary')) document.getElementById('add-friend-modal').classList.remove('show'); }
+
+        async function sendFriendRequest() {
+            const msgEl = document.getElementById('friend-modal-msg');
+            const targetUsername = document.getElementById('target-username').value.trim();
+            msgEl.style.display = 'none';
+            if (!targetUsername) { msgEl.innerText = 'Please enter a username.'; msgEl.className = 'modal-msg error'; msgEl.style.display = 'block'; return; }
+            try {
+                const { data: targetProfile, error: profileErr } = await supabaseClient.from('profiles').select('id, username').eq('username', targetUsername).single();
+                if (profileErr || !targetProfile) { msgEl.innerText = 'User not found.'; msgEl.className = 'modal-msg error'; msgEl.style.display = 'block'; return; }
+                if (targetProfile.id === currentUser.id) { msgEl.innerText = "You can't add yourself."; msgEl.className = 'modal-msg error'; msgEl.style.display = 'block'; return; }
+                const { error: insertErr } = await supabaseClient.from('friendships').insert({ sender_id: currentUser.id, receiver_id: targetProfile.id, status: 'pending' });
+                if (insertErr) {
+                    msgEl.innerText = insertErr.code === '23505' ? 'Request already exists.' : insertErr.message;
+                    msgEl.className = 'modal-msg error'; msgEl.style.display = 'block'; return;
+                }
+                msgEl.innerText = 'Success! Request sent.'; msgEl.className = 'modal-msg success'; msgEl.style.display = 'block';
+                await loadAppData(); renderView();
+                setTimeout(() => document.getElementById('add-friend-modal').classList.remove('show'), 1200);
+            } catch (err) { msgEl.innerText = 'An error occurred.'; msgEl.className = 'modal-msg error'; msgEl.style.display = 'block'; }
+        }
+    </script>
+</body>
+</html>
