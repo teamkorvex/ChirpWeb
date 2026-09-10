@@ -555,6 +555,9 @@
                 if (!Cookies.get('chirp_session')) return window.location.replace('/');
                 const res = await fetch('/api/config');
                 const config = await res.json();
+                if (!res.ok || !config.supabaseUrl || !config.supabaseAnonKey) {
+                    throw new Error(config.error || 'Supabase configuration is unavailable.');
+                }
                 supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
 
                 const { data: { user }, error } = await supabaseClient.auth.getUser();

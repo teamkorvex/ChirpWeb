@@ -208,6 +208,9 @@
             try {
                 const res = await fetch('/api/config', { cache: 'no-store' });
                 const config = await res.json();
+                if (!res.ok || !config.supabaseUrl || !config.supabaseAnonKey) {
+                    throw new Error(config.error || 'Supabase configuration is unavailable.');
+                }
                 supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
 
                 if (Cookies.get('chirp_session')) {
@@ -217,6 +220,8 @@
                 }
             } catch (err) {
                 console.error('Init error:', err);
+                errorMsg.innerText = err.message || 'Unable to connect to Chirp.';
+                errorMsg.style.display = 'block';
             }
         }
         init();

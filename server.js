@@ -12,22 +12,29 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.SERVER_PORT || process.env.PORT || 9034;
 
+function getSupabaseConfig() {
+    return {
+        url: process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+        anonKey: process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+    };
+}
+
 app.use(express.json());
 app.use(cookieParser());
 
 // Supabase configuration
 app.get('/api/config', (req, res) => {
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+    const { url, anonKey } = getSupabaseConfig();
+
+    if (!url || !anonKey) {
         console.error('Missing Supabase environment variables');
         return res.status(500).json({
             error: 'Supabase configuration is missing'
         });
     }
 
-    res.json({
-        supabaseUrl: process.env.SUPABASE_URL,
-        supabaseAnonKey: process.env.SUPABASE_ANON_KEY
-    });
+    res.set('Cache-Control', 'no-store');
+    res.json({ supabaseUrl: url, supabaseAnonKey: anonKey });
 });
 
 // Static website with extensions disabled
