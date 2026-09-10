@@ -132,9 +132,19 @@
             color: #f4f4f5;
             font-size: 13px;
             outline: none;
-            transition: border-color 0.15s;
+            transition: border-color 0.15s, box-shadow 0.15s;
         }
         .settings-field input:focus { border-color: #a78bfa; }
+        
+        /* Dynamic Validation States for Username Input */
+        .settings-field input.is-valid {
+            border-color: #34d399 !important;
+            box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.2);
+        }
+        .settings-field input.is-invalid {
+            border-color: #f87171 !important;
+            box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.2);
+        }
 
         .avatar-upload-row {
             display: flex;
@@ -180,6 +190,8 @@
             transition: background 0.15s;
         }
         .settings-btn:hover { background-color: #10b981; }
+        .settings-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
         .settings-btn.secondary {
             background-color: #0f0f0f;
             color: #f4f4f5;
@@ -187,9 +199,10 @@
         }
         .settings-btn.secondary:hover { background-color: #27272a; }
 
-        .settings-msg { font-size: 12px; margin-top: 10px; display: none; }
+        .settings-msg { font-size: 12px; margin-top: 6px; display: block; }
         .settings-msg.error { color: #f87171; }
         .settings-msg.success { color: #34d399; }
+        .settings-msg.neutral { color: #71717a; }
 
         /* Close / Esc button style top right */
         .close-settings-esc {
@@ -279,7 +292,6 @@
 <body>
 
     <div class="settings-full-layout">
-        <!-- Sidebar Navigation -->
         <div class="settings-sidebar">
             <div class="settings-sidebar-category">User Settings</div>
             <button class="settings-nav-item active" id="tab-btn-account" onclick="switchSettingsTab('account')">My Account</button>
@@ -288,7 +300,7 @@
             <div class="settings-divider"></div>
             
             <div class="settings-sidebar-category">App Management</div>
-            <button class="settings-nav-item" onclick="window.location.href='/chat.html'">Return to App</button>
+            <button class="settings-nav-item" onclick="window.location.href='/chat'">Return to App</button>
             
             <div class="settings-divider"></div>
             
@@ -298,13 +310,10 @@
             </button>
         </div>
 
-        <!-- Main Content Area -->
         <div class="settings-content-area" id="settings-pane-container">
-            <!-- Dynamic tab content injected via JS -->
-        </div>
+            </div>
 
-        <!-- Esc / Close Button -->
-        <div class="close-settings-esc" onclick="window.location.href='/chat.html'" title="Back to App">
+        <div class="close-settings-esc" onclick="window.location.href='/chat'" title="Back to App">
             <div class="esc-circle">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </div>
@@ -320,6 +329,8 @@
         let currentProfile = {};
         let activeSettingsTab = 'account';
         let selectedFileToUpload = null;
+        let usernameCheckTimer = null;
+        let isUsernameAvailable = true;
 
         async function init() {
             try {
@@ -354,7 +365,7 @@
         function switchSettingsTab(tabName) {
             activeSettingsTab = tabName;
             document.querySelectorAll('.settings-nav-item').forEach(b => {
-                if(!b.classList.contains('danger') && !b.getAttribute('onclick')?.includes('chat.html')) {
+                if(!b.classList.contains('danger') && !b.getAttribute('onclick')?.includes('chat')) {
                     b.classList.remove('active');
                 }
             });
@@ -384,15 +395,21 @@
                             </div>
                             <div class="settings-field" style="margin-top: 18px;">
                                 <label>Username</label>
-                                <input type="text" id="settings-username" value="${currentProfile.username || ''}">
+                                <input type="text" id="settings-username" value="${currentProfile.username || ''}" oninput="handleUsernameInput(event)" autocomplete="off" spellcheck="false">
+                                <span id="username-status-msg" class="settings-msg neutral">This is your public display name.</span>
                             </div>
-                            <div id="settings-msg" class="settings-msg"></div>
+                            <div id="settings-global-msg" class="settings-msg" style="margin-top: 10px; display: none;"></div>
                             <div style="margin-top: 20px;">
-                                <button class="settings-btn" onclick="saveSettings()">Save Changes</button>
+                                <button class="settings-btn" id="save-settings-btn" onclick="saveSettings()">Save Changes</button>
                             </div>
                         </div>
                     </div>
                 `;
+                // Run an initial check layout check style
+                if (currentProfile.username) {
+                    const input = document.getElementById('settings-username');
+                    if(input) input.classList.add('is-valid');
+                }
             } else if (activeSettingsTab === 'privacy') {
                 container.innerHTML = `
                     <div class="settings-container">
@@ -432,13 +449,92 @@
             reader.readAsDataURL(file);
         }
 
+        // Real-time username input listener with debounce
+        function handleUsernameInput(e) {
+            const val = e.target.value.trim();
+            const msgEl = document.getElementById('username-status-msg');
+            const saveBtn = document.getElementById('save-settings-btn');
+            const inputEl = e.target;
+
+            clearTimeout(usernameCheckTimer);
+
+            // Basic validation
+            if (!val) {
+                inputEl.className = 'is-invalid';
+                msgEl.innerText = 'Username cannot be empty.';
+                msgEl.className = 'settings-msg error';
+                isUsernameAvailable = false;
+                if(saveBtn) saveBtn.disabled = true;
+                return;
+            }
+
+            if (val.length < 3) {
+                inputEl.className = 'is-invalid';
+                msgEl.innerText = 'Username must be at least 3 characters long.';
+                msgEl.className = 'settings-msg error';
+                isUsernameAvailable = false;
+                if(saveBtn) saveBtn.disabled = true;
+                return;
+            }
+
+            // If it's the exact same username they already have, it's safe
+            if (val === currentProfile.username) {
+                inputEl.className = 'is-valid';
+                msgEl.innerText = 'This is your current username.';
+                msgEl.className = 'settings-msg success';
+                isUsernameAvailable = true;
+                if(saveBtn) saveBtn.disabled = false;
+                return;
+            }
+
+            inputEl.className = '';
+            msgEl.innerText = 'Checking availability...';
+            msgEl.className = 'settings-msg neutral';
+
+            // Debounce request to database
+            usernameCheckTimer = setTimeout(async () => {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('profiles')
+                        .select('id')
+                        .eq('username', val)
+                        .maybeSingle();
+
+                    if (error) throw error;
+
+                    if (data && data.id !== currentUser.id) {
+                        inputEl.className = 'is-invalid';
+                        msgEl.innerText = 'Username is already taken.';
+                        msgEl.className = 'settings-msg error';
+                        isUsernameAvailable = false;
+                        if(saveBtn) saveBtn.disabled = true;
+                    } else {
+                        inputEl.className = 'is-valid';
+                        msgEl.innerText = 'This username is available!';
+                        msgEl.className = 'settings-msg success';
+                        isUsernameAvailable = true;
+                        if(saveBtn) saveBtn.disabled = false;
+                    }
+                } catch (err) {
+                    inputEl.className = 'is-invalid';
+                    msgEl.innerText = 'Error checking availability.';
+                    msgEl.className = 'settings-msg error';
+                    isUsernameAvailable = false;
+                    if(saveBtn) saveBtn.disabled = true;
+                }
+            }, 400);
+        }
+
         async function saveSettings() {
             const newUsername = document.getElementById('settings-username').value.trim();
-            const msgEl = document.getElementById('settings-msg');
-            msgEl.style.display = 'none';
+            const globalMsgEl = document.getElementById('settings-global-msg');
+            globalMsgEl.style.display = 'none';
 
-            if (!newUsername) {
-                msgEl.innerText = 'Username cannot be empty.'; msgEl.className = 'settings-msg error'; msgEl.style.display = 'block'; return;
+            if (!isUsernameAvailable) {
+                globalMsgEl.innerText = 'Please choose an available username before saving.';
+                globalMsgEl.className = 'settings-msg error';
+                globalMsgEl.style.display = 'block';
+                return;
             }
 
             try {
@@ -451,7 +547,10 @@
 
                     const { error: uploadErr } = await supabaseClient.storage.from('avatars').upload(filePath, selectedFileToUpload, { upsert: true });
                     if (uploadErr) {
-                        msgEl.innerText = 'Error uploading file: ' + uploadErr.message; msgEl.className = 'settings-msg error'; msgEl.style.display = 'block'; return;
+                        globalMsgEl.innerText = 'Error uploading file: ' + uploadErr.message;
+                        globalMsgEl.className = 'settings-msg error';
+                        globalMsgEl.style.display = 'block';
+                        return;
                     }
 
                     const { data: publicUrlData } = supabaseClient.storage.from('avatars').getPublicUrl(filePath);
@@ -465,16 +564,23 @@
                 }).eq('id', currentUser.id);
 
                 if (error) {
-                    msgEl.innerText = error.message; msgEl.className = 'settings-msg error'; msgEl.style.display = 'block'; return;
+                    globalMsgEl.innerText = error.message;
+                    globalMsgEl.className = 'settings-msg error';
+                    globalMsgEl.style.display = 'block';
+                    return;
                 }
 
                 currentProfile.username = newUsername;
                 currentProfile.avatar_url = avatarUrl;
                 selectedFileToUpload = null;
 
-                msgEl.innerText = 'Settings saved successfully!'; msgEl.className = 'settings-msg success'; msgEl.style.display = 'block';
+                globalMsgEl.innerText = 'Settings saved successfully!';
+                globalMsgEl.className = 'settings-msg success';
+                globalMsgEl.style.display = 'block';
             } catch (err) {
-                msgEl.innerText = 'An unexpected error occurred.'; msgEl.className = 'settings-msg error'; msgEl.style.display = 'block';
+                globalMsgEl.innerText = 'An unexpected error occurred.';
+                globalMsgEl.className = 'settings-msg error';
+                globalMsgEl.style.display = 'block';
             }
         }
     </script>

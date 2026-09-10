@@ -212,7 +212,7 @@
 
                 if (Cookies.get('chirp_session')) {
                     const { data: { session } } = await supabaseClient.auth.getSession();
-                    if (session) return window.location.replace('/chat.html');
+                    if (session) return window.location.replace('/chat');
                     Cookies.remove('chirp_session', { path: '/' });
                 }
             } catch (err) {
@@ -256,7 +256,7 @@
                 
                 if (data.session) {
                     Cookies.set('chirp_session', data.session.access_token, { expires: 7, path: '/' });
-                    window.location.replace('/chat.html');
+                    window.location.replace('/chat');
                 }
             } catch (err) {
                 errorMsg.innerText = err.message || 'Login failed.';
@@ -363,7 +363,7 @@
 
                 if (data.session) {
                     Cookies.set('chirp_session', data.session.access_token, { expires: 7, path: '/' });
-                    window.location.replace('/chat.html');
+                    window.location.replace('/chat');
                 }
             } catch (err) {
                 errorMsg.innerText = err.message || 'Registration failed.';

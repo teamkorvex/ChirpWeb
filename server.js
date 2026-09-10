@@ -40,6 +40,11 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`Chirp running on http://localhost:${PORT}`);
-});
+// Only listen locally or on a persistent server, not inside Vercel's serverless environment
+if (process.env.VERCEL !== '1') {
+    app.listen(PORT, () => {
+        console.log(`Chirp running on http://localhost:${PORT}`);
+    });
+}
+
+export default app;
