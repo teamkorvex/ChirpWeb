@@ -487,6 +487,11 @@
         .message-edit-form button.cancel { background: #3f3f46; color: #d4d4d8; }
         .chat-report-button { margin-left: auto; padding: 6px 9px; border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; background: transparent; color: #a1a1aa; font-size: 11px; cursor: pointer; }
         .chat-report-button:hover { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.3); color: #f87171; }
+        .staff-badge { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: #fbbf24; vertical-align: -2px; }
+        .staff-badge svg { width: 14px; height: 14px; }
+        .admin-button { margin-left: auto; }
+        .admin-user-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .admin-user-row input { flex: 1; margin: 0; }
 
         @media (max-width: 640px) {
             .server-sidebar { width: 54px; }
@@ -525,6 +530,9 @@
                 <div class="dropup-item" onclick="window.location.href='/settings'">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     <span>Settings</span>
+                </div>
+                <div class="dropup-item" id="admin-menu-item" style="display:none;" onclick="openAdminDashboard()">
+                    <span>Badge Dashboard</span>
                 </div>
                 <div class="dropup-item danger" onclick="handleLogout()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -601,6 +609,21 @@
         </div>
     </div>
 
+    <div id="admin-modal" class="modal-overlay" onclick="closeAdminDashboard(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <h3>Badge Dashboard</h3>
+            <p>Assign the Staff Badge to a Chirp username.</p>
+            <div id="admin-msg" class="modal-msg"></div>
+            <div class="admin-user-row">
+                <input id="badge-username" type="text" placeholder="Username" onkeydown="if(event.key==='Enter') assignStaffBadge()">
+                <button class="modal-btn primary" type="button" onclick="assignStaffBadge()">Assign</button>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary" type="button" onclick="closeAdminDashboard()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5/dist/js.cookie.min.js"></script>
     <script>
@@ -610,6 +633,8 @@
         let currentFriendsTab = 'online';
         let cachedProfiles = {};
         let cachedFriendships = [];
+        let cachedBadges = {};
+        let realtimeChannel = null;
 
         async function init() {
             try {
@@ -646,6 +671,7 @@
                         panelPfp.style.display = 'none'; panelFallback.style.display = 'flex';
                         if (profile.username) panelFallback.innerText = profile.username.charAt(0).toUpperCase();
                     }
+                    if (profile.username === 'crews') document.getElementById('admin-menu-item').style.display = 'flex';
                 } else if (user.email) {
                     usernameEl.innerText = user.email.split('@')[0];
                     panelPfp.style.display = 'none'; panelFallback.style.display = 'flex';
@@ -653,6 +679,8 @@
                 }
 
                 await loadAppData();
+                await loadBadges();
+                subscribeToRealtime();
                 renderView();
                 setInterval(() => updatePresence(true), 30000);
 
@@ -696,6 +724,53 @@
                 if (profs) profs.forEach(p => { cachedProfiles[p.id] = p; });
             }
             updatePendingBadge();
+        }
+
+        async function loadBadges() {
+            const ids = Object.keys(cachedProfiles);
+            if (!ids.length) return;
+            const { data } = await supabaseClient.from('user_badges').select('user_id, badge_key').in('user_id', ids);
+            cachedBadges = {};
+            (data || []).forEach(badge => {
+                cachedBadges[badge.user_id] = cachedBadges[badge.user_id] || {};
+                cachedBadges[badge.user_id][badge.badge_key] = true;
+            });
+        }
+
+        function subscribeToRealtime() {
+            realtimeChannel = supabaseClient.channel('chirp-live-updates')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, payload => {
+                    if (currentView.startsWith('chat:')) loadMessages(currentView.split(':')[1]);
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, async payload => {
+                    await loadAppData();
+                    renderView();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, payload => {
+                    if (!payload.new?.id) return;
+                    cachedProfiles[payload.new.id] = { ...(cachedProfiles[payload.new.id] || {}), ...payload.new };
+                    updateCurrentUserPanel(payload.new);
+                    renderView();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'user_badges' }, payload => {
+                    const badge = payload.new?.user_id ? payload.new : payload.old;
+                    if (!badge?.user_id) return;
+                    cachedBadges[badge.user_id] = cachedBadges[badge.user_id] || {};
+                    if (payload.eventType === 'DELETE') delete cachedBadges[badge.user_id][badge.badge_key];
+                    else cachedBadges[badge.user_id][badge.badge_key] = true;
+                    renderView();
+                })
+                .subscribe();
+        }
+
+        function updateCurrentUserPanel(profile) {
+            if (profile.id !== currentUser.id) return;
+            document.getElementById('panel-username').innerText = profile.username || 'User';
+            const image = document.getElementById('panel-pfp');
+            const fallback = document.getElementById('panel-fallback-pfp');
+            if (profile.avatar_url) { image.src = profile.avatar_url; image.style.display = 'block'; fallback.style.display = 'none'; }
+            else { image.style.display = 'none'; fallback.style.display = 'flex'; fallback.innerText = (profile.username || '?').charAt(0).toUpperCase(); }
+            document.getElementById('admin-menu-item').style.display = profile.username === 'crews' ? 'flex' : 'none';
         }
 
         function updatePendingBadge() {
@@ -812,6 +887,11 @@
                 : `<div class="${className}">${escapeHtml(username.charAt(0).toUpperCase())}</div>`;
         }
 
+        function badgeMarkup(profile) {
+            if (!cachedBadges[profile.id]?.staff) return '';
+            return '<span class="staff-badge" title="Staff Badge" aria-label="Staff Badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m14.7 6.3 3 3"/><path d="m3 21 6.6-6.6"/><path d="m8.5 8.5 7-7 3 3-7 7"/><path d="m13 13 2 2"/><path d="m17 17 4 4"/><path d="M3 3 7 7"/></svg></span>';
+        }
+
         function formatMessageTime(timestamp) {
             const sentAt = new Date(timestamp);
             const age = Date.now() - sentAt.getTime();
@@ -880,7 +960,7 @@
                     <div class="message-row" id="message-${message.id}">
                         ${avatarMarkup(profile)}
                         <div class="message-main">
-                            <div class="message-meta"><span class="message-author">${escapeHtml(profile.username)}</span><time class="message-time" title="${escapeHtml(new Date(message.created_at).toLocaleString())}">${formatMessageTime(message.created_at)}</time></div>
+                            <div class="message-meta"><span class="message-author">${escapeHtml(profile.username)} ${badgeMarkup(profile)}</span><time class="message-time" title="${escapeHtml(new Date(message.created_at).toLocaleString())}">${formatMessageTime(message.created_at)}</time></div>
                             <div class="message-content">${escapeHtml(message.content)}${message.updated_at ? '<span class="message-edited">(edited)</span>' : ''}</div>
                         </div>
                         ${actionMenu}
@@ -944,6 +1024,46 @@
             const { error } = await supabaseClient.from('messages').delete().eq('id', messageId).eq('sender_id', currentUser.id);
             if (error) { showMessageError(error.message); return; }
             await loadMessages(currentView.split(':')[1]);
+        }
+
+        function openAdminDashboard() {
+            if (cachedProfiles[currentUser.id]?.username !== 'crews') return;
+            document.getElementById('badge-username').value = '';
+            document.getElementById('admin-msg').style.display = 'none';
+            document.getElementById('admin-modal').classList.add('show');
+            document.getElementById('badge-username').focus();
+        }
+
+        function closeAdminDashboard(event) {
+            if (!event || event.target.id === 'admin-modal') document.getElementById('admin-modal').classList.remove('show');
+        }
+
+        async function assignStaffBadge() {
+            const messageEl = document.getElementById('admin-msg');
+            const username = document.getElementById('badge-username').value.trim();
+            if (!username) {
+                messageEl.innerText = 'Enter a username.';
+                messageEl.className = 'modal-msg error';
+                messageEl.style.display = 'block';
+                return;
+            }
+            const { data: target, error: lookupError } = await supabaseClient.from('profiles').select('id, username').eq('username', username).maybeSingle();
+            if (lookupError || !target) {
+                messageEl.innerText = 'User not found.';
+                messageEl.className = 'modal-msg error';
+                messageEl.style.display = 'block';
+                return;
+            }
+            const { error } = await supabaseClient.from('user_badges').insert({ user_id: target.id, badge_key: 'staff', assigned_by: currentUser.id });
+            if (error && error.code !== '23505') {
+                messageEl.innerText = error.message;
+                messageEl.className = 'modal-msg error';
+                messageEl.style.display = 'block';
+                return;
+            }
+            messageEl.innerText = error?.code === '23505' ? 'That user already has the Staff Badge.' : `Staff Badge assigned to ${target.username}.`;
+            messageEl.className = 'modal-msg success';
+            messageEl.style.display = 'block';
         }
 
         let pendingReport = null;
