@@ -286,6 +286,71 @@
             font-weight: 600;
             flex-shrink: 0;
         }
+
+        .privacy-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 0;
+            border-top: 1px solid rgba(255,255,255,0.04);
+        }
+        .privacy-toggle-row:first-child { border-top: none; padding-top: 0; }
+        .privacy-toggle-text {
+            flex: 1;
+            min-width: 0;
+        }
+        .privacy-toggle-text h5 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f4f4f5;
+            margin: 0 0 4px;
+        }
+        .privacy-toggle-text p {
+            font-size: 12px;
+            color: #a1a1aa;
+            margin: 0;
+            line-height: 1.45;
+        }
+        .privacy-toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+        .privacy-toggle-switch input {
+            position: absolute;
+            opacity: 0;
+            inset: 0;
+            cursor: pointer;
+        }
+        .privacy-toggle-slider {
+            position: absolute;
+            inset: 0;
+            background-color: #27272a;
+            border-radius: 26px;
+            transition: background 0.2s ease;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .privacy-toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            left: 2px;
+            top: 2px;
+            background-color: #ffffff;
+            transition: transform 0.2s ease;
+        }
+        .privacy-toggle-switch input:checked + .privacy-toggle-slider {
+            background-color: #34d399;
+        }
+        .privacy-toggle-switch input:checked + .privacy-toggle-slider::before {
+            transform: translateX(20px);
+            background-color: #0f0f0f;
+        }
     </style>
 </head>
 <body>
@@ -407,10 +472,25 @@
                     if(input) input.classList.add('is-valid');
                 }
             } else if (activeSettingsTab === 'privacy') {
+                const incomingDisabled = Boolean(currentProfile.friend_requests_disabled);
                 container.innerHTML = `
                     <div class="settings-container">
                         <div class="settings-header">Privacy & Safety</div>
-                        
+
+                        <div class="settings-card">
+                            <h4>Friend Requests</h4>
+                            <div class="privacy-toggle-row">
+                                <div class="privacy-toggle-text">
+                                    <h5>Only send requests myself</h5>
+                                    <p>When enabled, people cannot send friend requests to you. You must start the request toward them instead.</p>
+                                </div>
+                                <label class="privacy-toggle-switch">
+                                    <input type="checkbox" id="friend-requests-disabled-toggle" ${incomingDisabled ? 'checked' : ''} onchange="saveFriendRequestSetting(this.checked)">
+                                    <span class="privacy-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="settings-card">
                             <h4>Account Standing</h4>
                             <div class="standing-row" onclick="alert('Your account is in full compliance with Chirp guidelines.')">
@@ -519,6 +599,34 @@
                     if(saveBtn) saveBtn.disabled = true;
                 }
             }, 400);
+        }
+
+        async function saveFriendRequestSetting(disabled) {
+            try {
+                const { error } = await supabaseClient.from('profiles').update({
+                    friend_requests_disabled: disabled,
+                    updated_at: new Date().toISOString()
+                }).eq('id', currentUser.id);
+
+                if (error) {
+                    const msg = document.getElementById('settings-global-msg') || document.createElement('div');
+                    msg.innerText = error.message;
+                    msg.className = 'settings-msg error';
+                    msg.style.display = 'block';
+                    return;
+                }
+
+                currentProfile.friend_requests_disabled = disabled;
+                const msg = document.getElementById('settings-global-msg') || document.createElement('div');
+                msg.innerText = disabled ? 'Incoming friend requests are now disabled.' : 'Incoming friend requests are now enabled.';
+                msg.className = 'settings-msg success';
+                msg.style.display = 'block';
+            } catch (err) {
+                const msg = document.getElementById('settings-global-msg') || document.createElement('div');
+                msg.innerText = 'Unable to save privacy setting.';
+                msg.className = 'settings-msg error';
+                msg.style.display = 'block';
+            }
         }
 
         async function saveSettings() {

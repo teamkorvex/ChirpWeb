@@ -1161,9 +1161,15 @@
             msgEl.style.display = 'none';
             if (!targetUsername) { msgEl.innerText = 'Please enter a username.'; msgEl.className = 'modal-msg error'; msgEl.style.display = 'block'; return; }
             try {
-                const { data: targetProfile, error: profileErr } = await supabaseClient.from('profiles').select('id, username').eq('username', targetUsername).single();
+                const { data: targetProfile, error: profileErr } = await supabaseClient.from('profiles').select('id, username, friend_requests_disabled').eq('username', targetUsername).single();
                 if (profileErr || !targetProfile) { msgEl.innerText = 'User not found.'; msgEl.className = 'modal-msg error'; msgEl.style.display = 'block'; return; }
                 if (targetProfile.id === currentUser.id) { msgEl.innerText = "You can't add yourself."; msgEl.className = 'modal-msg error'; msgEl.style.display = 'block'; return; }
+                if (targetProfile.friend_requests_disabled) {
+                    msgEl.innerText = 'That user is not accepting incoming requests. You can still ask them to add you by sending a request to them from their profile.';
+                    msgEl.className = 'modal-msg error';
+                    msgEl.style.display = 'block';
+                    return;
+                }
                 const { error: insertErr } = await supabaseClient.from('friendships').insert({ sender_id: currentUser.id, receiver_id: targetProfile.id, status: 'pending' });
                 if (insertErr) {
                     msgEl.innerText = insertErr.code === '23505' ? 'Request already exists.' : insertErr.message;
