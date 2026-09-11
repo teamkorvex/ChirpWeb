@@ -69,6 +69,49 @@
             border-radius: 35%;
         }
 
+        .server-list-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .server-icon.server-created {
+            background: var(--bg-secondary);
+            color: #f4f4f5;
+            border: 1px solid rgba(255,255,255,0.04);
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .server-icon.server-created img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .server-icon.server-created .server-fallback {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #a78bfa;
+            color: #0f0f0f;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .server-icon.server-created:hover {
+            background: var(--bg-secondary);
+            border-radius: 50%;
+        }
+
         .server-divider {
             width: 28px;
             height: 2px;
@@ -506,11 +549,9 @@
 <body>
 
     <div class="server-sidebar">
-        <div class="server-icon" onclick="switchTab('overview')" title="Direct Messages">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-        </div>
+        <div class="server-list-container" id="server-list-container"></div>
         <div class="server-divider"></div>
-        <div class="server-icon add-server" onclick="openServerModal()" title="Add a Workspace">+</div>
+        <div class="server-icon add-server" onclick="openServerModal()" title="Create Server">+</div>
     </div>
 
     <div class="app-layout">
@@ -577,10 +618,22 @@
 
     <div id="server-modal" class="modal-overlay" onclick="closeServerModal(event)">
         <div class="modal-card" onclick="event.stopPropagation()">
-            <h3>Workspace Creation</h3>
-            <p>Workspace creation is currently unavailable.</p>
+            <h3>Create Server</h3>
+            <p>Create a new server with a name and icon.</p>
+            <div id="server-modal-msg" class="modal-msg"></div>
+            <div class="server-create-form">
+                <div class="server-upload-wrap">
+                    <label class="server-icon-drop" for="server-icon-input">
+                        <img id="server-icon-preview" alt="" style="display:none;">
+                        <span id="server-icon-placeholder" class="server-icon-placeholder">+</span>
+                        <input type="file" id="server-icon-input" accept="image/png,image/jpeg,image/gif,image/webp" onchange="previewServerIcon(event)">
+                    </label>
+                </div>
+                <input type="text" id="server-name-input" class="server-name-input" placeholder="Server name" autocomplete="off" spellcheck="false">
+            </div>
             <div class="modal-footer">
-                <button class="modal-btn primary" onclick="closeServerModal()">Got it</button>
+                <button class="modal-btn secondary" type="button" onclick="closeServerModal()">Cancel</button>
+                <button class="modal-btn primary" type="button" onclick="createServer()">Create Server</button>
             </div>
         </div>
     </div>
@@ -637,6 +690,7 @@
         let cachedFriendships = [];
         let cachedBadges = {};
         let realtimeChannel = null;
+        let createdServers = [];
 
         async function init() {
             try {
@@ -1150,8 +1204,107 @@
             await loadAppData(); renderView();
         }
 
-        function openServerModal() { document.getElementById('server-modal').classList.add('show'); }
-        function closeServerModal(e) { if (!e || e.target.id === 'server-modal' || e.target.classList.contains('modal-btn')) document.getElementById('server-modal').classList.remove('show'); }
+        function openServerModal() {
+            const modal = document.getElementById('server-modal');
+            const name = document.getElementById('server-name-input');
+            const msg = document.getElementById('server-modal-msg');
+            const iconInput = document.getElementById('server-icon-input');
+            const preview = document.getElementById('server-icon-preview');
+            const placeholder = document.getElementById('server-icon-placeholder');
+            name.value = '';
+            iconInput.value = '';
+            msg.style.display = 'none';
+            preview.style.display = 'none';
+            preview.src = '';
+            placeholder.style.display = 'flex';
+            modal.classList.add('show');
+        }
+
+        function closeServerModal(e) {
+            if (!e || e.target.id === 'server-modal' || e.target.classList.contains('modal-btn')) {
+                document.getElementById('server-modal').classList.remove('show');
+            }
+        }
+
+        function renderServerList() {
+            const container = document.getElementById('server-list-container');
+            if (!container) return;
+            if (!createdServers.length) {
+                container.innerHTML = '';
+                return;
+            }
+            container.innerHTML = createdServers.map(server => {
+                const fallback = server.name ? server.name.charAt(0).toUpperCase() : '?';
+                const img = server.icon_url ? `<img src="${server.icon_url}" alt="${server.name || 'Server'}">` : `<div class="server-fallback">${fallback}</div>`;
+                return `<div class="server-icon server-created" title="${server.name || 'Server'}" onclick="switchTab('server:${server.id}')">${img}</div>`;
+            }).join('');
+        }
+
+        function previewServerIcon(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = document.getElementById('server-icon-preview');
+                const placeholder = document.getElementById('server-icon-placeholder');
+                img.src = reader.result;
+                img.style.display = 'block';
+                placeholder.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function createServer() {
+            const msg = document.getElementById('server-modal-msg');
+            const nameInput = document.getElementById('server-name-input');
+            const iconInput = document.getElementById('server-icon-input');
+            const serverName = nameInput.value.trim();
+            const file = iconInput.files?.[0] || null;
+            msg.className = 'modal-msg error';
+            msg.style.display = 'none';
+
+            if (!serverName) {
+                msg.innerText = 'Please enter a server name.';
+                msg.style.display = 'block';
+                return;
+            }
+            if (!file) {
+                msg.innerText = 'Please upload a server icon.';
+                msg.style.display = 'block';
+                return;
+            }
+
+            try {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${currentUser.id}-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+                const uploadPath = `servers/${fileName}`;
+                const { error: uploadErr } = await supabaseClient.storage.from('avatars').upload(uploadPath, file, { upsert: true });
+                if (uploadErr) {
+                    msg.innerText = uploadErr.message;
+                    msg.style.display = 'block';
+                    return;
+                }
+                const { data: publicUrlData } = supabaseClient.storage.from('avatars').getPublicUrl(uploadPath);
+                const server = {
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                    name: serverName,
+                    icon_url: publicUrlData.publicUrl,
+                };
+                createdServers.unshift(server);
+                renderServerList();
+                closeServerModal();
+                msg.innerText = '';
+                nameInput.value = '';
+                iconInput.value = '';
+                document.getElementById('server-icon-preview').style.display = 'none';
+                document.getElementById('server-icon-placeholder').style.display = 'flex';
+            } catch (err) {
+                msg.innerText = 'Unable to create server.';
+                msg.className = 'modal-msg error';
+                msg.style.display = 'block';
+            }
+        }
+
         function openAddFriendModal() { document.getElementById('target-username').value = ''; document.getElementById('friend-modal-msg').style.display = 'none'; document.getElementById('add-friend-modal').classList.add('show'); }
         function closeAddFriendModal(e) { if (!e || e.target.id === 'add-friend-modal' || e.target.classList.contains('secondary')) document.getElementById('add-friend-modal').classList.remove('show'); }
 
