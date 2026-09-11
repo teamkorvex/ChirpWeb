@@ -487,6 +487,8 @@
         .message-edit-form button.cancel { background: #3f3f46; color: #d4d4d8; }
         .chat-report-button { margin-left: auto; padding: 6px 9px; border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; background: transparent; color: #a1a1aa; font-size: 11px; cursor: pointer; }
         .chat-report-button:hover { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.3); color: #f87171; }
+        .chat-unfriend-button { padding: 6px 9px; border: 1px solid rgba(248,113,113,0.35); border-radius: 4px; background: transparent; color: #fca5a5; font-size: 11px; cursor: pointer; }
+        .chat-unfriend-button:hover { background: rgba(248,113,113,0.1); color: #f87171; }
         .staff-badge { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: #fbbf24; vertical-align: -2px; }
         .staff-badge svg { width: 14px; height: 14px; }
         .admin-button { margin-left: auto; }
@@ -867,7 +869,10 @@
                             <div class="pfp-container">${avatarHtml}<div class="status-dot ${isOnline ? 'online' : 'offline'}"></div></div>
                             <div class="friend-details"><h4>${p.username}</h4><p>${isOnline ? 'Online' : 'Offline'}</p></div>
                         </div>
-                        <div class="friend-actions"><button class="action-btn accept" onclick="event.stopPropagation(); switchTab('chat:${p.id}')">Message</button></div>
+                        <div class="friend-actions">
+                            <button class="action-btn accept" onclick="event.stopPropagation(); switchTab('chat:${p.id}')">Message</button>
+                            <button class="action-btn reject" onclick="event.stopPropagation(); unfriendFriend('${p.id}')">Unfriend</button>
+                        </div>
                     </div>
                 `;
             });
@@ -911,6 +916,7 @@
                             <h2>${escapeHtml(profile.username)}</h2>
                             <p>Direct message</p>
                         </div>
+                        <button class="chat-unfriend-button" type="button" onclick="unfriendFriend('${targetId}')">Unfriend</button>
                         <button class="chat-report-button" type="button" onclick="openReportModal('user', null, '${targetId}')">Report user</button>
                     </div>
                     <div class="message-list" id="message-list"><div class="message-empty">Loading messages...</div></div>
@@ -1119,13 +1125,23 @@
             }
         }
 
-        async function closeDm(friendId) {
+        async function unfriendFriend(friendId) {
             const friendship = cachedFriendships.find(f => (f.sender_id === currentUser.id && f.receiver_id === friendId) || (f.receiver_id === currentUser.id && f.sender_id === friendId));
-            if (friendship) {
-                await supabaseClient.from('friendships').delete().eq('id', friendship.id);
-                cachedFriendships = cachedFriendships.filter(f => f.id !== friendship.id);
-                if (currentView === 'chat:' + friendId) switchTab('overview'); else renderDmList();
+            if (!friendship) return;
+            const { error } = await supabaseClient.from('friendships').delete().eq('id', friendship.id);
+            if (error) {
+                const msg = document.getElementById('friend-modal-msg') || document.getElementById('message-error');
+                if (msg) msg.innerText = error.message;
+                return;
             }
+            cachedFriendships = cachedFriendships.filter(f => f.id !== friendship.id);
+            if (currentView === 'chat:' + friendId) switchTab('overview');
+            await loadAppData();
+            renderView();
+        }
+
+        async function closeDm(friendId) {
+            await unfriendFriend(friendId);
         }
 
         async function respondFriendRequest(friendshipId, status) {
