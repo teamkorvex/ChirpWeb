@@ -50,7 +50,7 @@ app.post('/api/reports', async (req, res) => {
     const accessToken = req.get('authorization')?.replace(/^Bearer\s+/i, '');
     const { type, reason, messageId, reportedUserId } = req.body || {};
 
-    if (!webhookUrl) return res.status(500).json({ error: 'Report service is not configured.' });
+    if (!webhookUrl) return res.status(503).json({ error: 'Reporting service is unavailable.' });
     if (!accessToken || !reason || !['message', 'user'].includes(type)) {
         return res.status(400).json({ error: 'A report type, reason, and valid session are required.' });
     }
