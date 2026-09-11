@@ -112,6 +112,22 @@
             border-radius: 50%;
         }
 
+        .server-disabled-note {
+            width: 48px;
+            min-height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #a1a1aa;
+            font-size: 10px;
+            line-height: 1.2;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 4px;
+            border: 1px dashed rgba(255,255,255,0.16);
+        }
+
         .server-divider {
             width: 28px;
             height: 2px;
@@ -549,7 +565,9 @@
 <body>
 
     <div class="server-sidebar">
-        <div class="server-list-container" id="server-list-container"></div>
+        <div class="server-list-container" id="server-list-container">
+            <div class="server-disabled-note">Server Creation temporarily is removed until Chirp fully releases.</div>
+        </div>
         <div class="server-divider"></div>
         <div class="server-icon add-server" onclick="openServerModal()" title="Create Server">+</div>
     </div>
@@ -619,21 +637,9 @@
     <div id="server-modal" class="modal-overlay" onclick="closeServerModal(event)">
         <div class="modal-card" onclick="event.stopPropagation()">
             <h3>Create Server</h3>
-            <p>Create a new server with a name and icon.</p>
-            <div id="server-modal-msg" class="modal-msg"></div>
-            <div class="server-create-form">
-                <div class="server-upload-wrap">
-                    <label class="server-icon-drop" for="server-icon-input">
-                        <img id="server-icon-preview" alt="" style="display:none;">
-                        <span id="server-icon-placeholder" class="server-icon-placeholder">+</span>
-                        <input type="file" id="server-icon-input" accept="image/png,image/jpeg,image/gif,image/webp" onchange="previewServerIcon(event)">
-                    </label>
-                </div>
-                <input type="text" id="server-name-input" class="server-name-input" placeholder="Server name" autocomplete="off" spellcheck="false">
-            </div>
+            <p>Server Creation temporarily is removed until Chirp fully releases.</p>
             <div class="modal-footer">
-                <button class="modal-btn secondary" type="button" onclick="closeServerModal()">Cancel</button>
-                <button class="modal-btn primary" type="button" onclick="createServer()">Create Server</button>
+                <button class="modal-btn primary" onclick="closeServerModal()">Got it</button>
             </div>
         </div>
     </div>
